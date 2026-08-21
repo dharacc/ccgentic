@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Capabilities from "@/components/Capabilities";
 import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
 import Intro from "@/components/Intro";
@@ -16,6 +17,7 @@ export default function Home() {
     <>
       <Hero />
       <Intro />
+      <Capabilities />
       <Projects />
       <JournalPreview />
       <Footer />

@@ -45,8 +45,28 @@ export const INTRO = {
   ],
 };
 
-export const PROJECTS = {
+export const CAPABILITIES = {
   number: "2",
+  label: "What we build",
+  heading: "Capabilities",
+  items: [
+    {
+      title: "Agentic tools",
+      body: "Software that acts with the brand — research, drafts, and routing so teams decide instead of wait.",
+    },
+    {
+      title: "Brand sites",
+      body: "Category-defining launches built to convert, not just to look featured.",
+    },
+    {
+      title: "Product systems",
+      body: "Content, agents, and interfaces that keep working after the first ship.",
+    },
+  ],
+};
+
+export const PROJECTS = {
+  number: "3",
   label: "Featured client work",
   heading: "Our projects",
   items: [
@@ -72,7 +92,7 @@ export const PROJECTS = {
 };
 
 export const JOURNAL = {
-  number: "3",
+  number: "4",
   label: "From the studio",
   heading: "Journal",
   intro: "Notes on agentic tools, brand systems, and the work we ship.",
@@ -147,7 +167,7 @@ export const FOOTER = {
       links: [
         { href: "/#projects", label: "Projects" },
         { href: "/about", label: "Case studies" },
-        { href: "/about", label: "Services" },
+        { href: "/#capabilities", label: "Services" },
         { href: "/about", label: "Process" },
       ],
     },
