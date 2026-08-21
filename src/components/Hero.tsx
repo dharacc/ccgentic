@@ -22,13 +22,17 @@ export default function Hero() {
             {HERO.eyebrow}
           </p>
           <h1 className="text-[clamp(1.75rem,7vw,4.2rem)] font-medium leading-[1.08] tracking-[-0.03em] text-gray-900 sm:text-[clamp(2.5rem,5vw,4.2rem)]">
-            {HERO.headingLines[0]}
-            <br className="hidden sm:block" />
-            <span className="sm:hidden"> </span>
-            {HERO.headingLines[1]}
-            <br className="hidden sm:block" />
-            <span className="sm:hidden"> </span>
-            {HERO.headingLines[2]}
+            {HERO.headingLines.map((line, index) => (
+              <span key={`${index}-${line}`}>
+                {index > 0 ? (
+                  <>
+                    <br className="hidden sm:block" />
+                    <span className="sm:hidden"> </span>
+                  </>
+                ) : null}
+                {line}
+              </span>
+            ))}
           </h1>
           <div className="mt-8 flex flex-col items-start gap-4 sm:mt-12 sm:flex-row sm:items-center sm:gap-5">
             <ArrowButton href={HERO.primaryCta.href}>

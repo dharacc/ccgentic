@@ -7,14 +7,14 @@ export const AVAILABILITY = `Taking on projects for Q1 ${PROJECT_YEAR}`;
 export const NAV_LINKS = [
   { href: "/#projects", label: "Projects" },
   { href: "/about", label: "Studio" },
-  { href: "/about", label: "Journal" },
+  { href: "/journal", label: "Journal" },
   { href: "/contact", label: "Connect" },
 ];
 
 export const HERO = {
   eyebrow: `${PROJECT_NAME} Studio`,
   headingLines: [
-    "We craft digital experiences",
+    "We build agentic tools",
     "for brands ready to dominate",
     "their category online.",
   ],
@@ -71,6 +71,63 @@ export const PROJECTS = {
   ],
 };
 
+export const JOURNAL = {
+  number: "3",
+  label: "From the studio",
+  heading: "Journal",
+  intro: "Notes on agentic tools, brand systems, and the work we ship.",
+  items: [
+    {
+      slug: "agentic-tools-for-growing-brands",
+      title: "Agentic tools for brands ready to move",
+      excerpt:
+        "Why we build software that acts with the brand, not just another dashboard.",
+      date: "2026-08-12",
+      featuredImage: "/media/studio-1.webp",
+      paragraphs: [
+        "Most digital work still waits for someone to click. Agentic tools change that: they research, draft, and route work so teams spend time on decisions instead of busywork.",
+        "At CCgentic we start with the category, then design the system around it. The product has to feel like the brand and still move fast enough to matter in market.",
+        "That is the brief we take into every build: strategy first, then the agents and interfaces that help a growing brand dominate its category online.",
+      ],
+    },
+    {
+      slug: "strategy-before-the-stack",
+      title: "Strategy before the stack",
+      excerpt:
+        "Creative systems land when research and iteration come before the tooling.",
+      date: "2026-07-28",
+      featuredImage: "/media/studio-2.webp",
+      paragraphs: [
+        "A new model or framework is not a strategy. We map the brand, the audience, and the outcome before we pick a stack.",
+        "Research, creative thinking, and iteration are how we help growing brands realize their digital full potential. The tools follow that work, not the other way around.",
+        "When the system is clear, shipping is quieter: fewer rewrites, tighter loops, and a product the team can actually run.",
+      ],
+    },
+    {
+      slug: "from-showcase-to-system",
+      title: "From showcase to system",
+      excerpt:
+        "A launch site is a moment. A living system is what keeps the category.",
+      date: "2026-07-09",
+      featuredImage: "",
+      paragraphs: [
+        "Beautiful launches still matter. They do not, on their own, keep a brand in front of its category.",
+        "We treat the first site as a system: content, agents, and conversion paths that can be updated without starting over.",
+        "That is how featured work turns into a studio practice — ship the moment, then keep the machine running.",
+      ],
+    },
+  ],
+};
+
+export function getJournalEntry(slug: string) {
+  for (const item of JOURNAL.items) {
+    if (item.slug === slug) {
+      return item;
+    }
+  }
+  return null;
+}
+
 export const FOOTER = {
   ctaLabel: "Work with us",
   heading: "Ready to dominate your category?",
@@ -82,7 +139,7 @@ export const FOOTER = {
         { href: "/about", label: "About" },
         { href: "/about", label: "Team" },
         { href: "/about", label: "Careers" },
-        { href: "/about", label: "Journal" },
+        { href: "/journal", label: "Journal" },
       ],
     },
     {
