@@ -11,7 +11,7 @@ import ProductOverview from "@/components/ProductOverview";
 import WhyAeromatic from "@/components/WhyAeromatic";
 import { getHomeContent } from "@/lib/wordpress";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const content = await getHomeContent();

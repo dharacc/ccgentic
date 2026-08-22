@@ -17,7 +17,6 @@ import type {
 } from "@/lib/content";
 
 const DEFAULT_WORDPRESS_URL = "https://project-in-progress.com/wp-ccgentic";
-const REVALIDATE_SECONDS = 60;
 const FETCH_TIMEOUT_MS = 8000;
 const HOME_PAGE_ID = 16;
 
@@ -1307,7 +1306,7 @@ async function fetchJson(url: string): Promise<unknown | null> {
         "User-Agent": "AeromaticNext/1.0",
       },
       signal: controller.signal,
-      next: { revalidate: REVALIDATE_SECONDS },
+      cache: "no-store",
     });
 
     if (!response.ok) {
