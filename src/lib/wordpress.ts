@@ -18,6 +18,8 @@ import type {
 
 const DEFAULT_WORDPRESS_URL = "https://project-in-progress.com/wp-ccgentic";
 const REVALIDATE_SECONDS = 60;
+const FETCH_TIMEOUT_MS = 8000;
+const HOME_PAGE_ID = 16;
 
 function wordpressUrl(): string {
   const fromEnv = process.env.WORDPRESS_URL;
@@ -30,8 +32,13 @@ function wordpressUrl(): string {
 
 function corePageUrls(): string[] {
   const base = wordpressUrl();
+  const homeQuery = "slug=home&acf_format=standard";
   return [
-    `${base}/wp-json/wp/v2/pages?slug=home&acf_format=standard`,
+    `${base}/wp-json/wp/v2/pages?${homeQuery}`,
+    `${base}/index.php/wp-json/wp/v2/pages?${homeQuery}`,
+    `${base}/index.php?rest_route=/wp/v2/pages&${homeQuery}`,
+    `${base}/wp-json/wp/v2/pages/${HOME_PAGE_ID}?acf_format=standard`,
+    `${base}/index.php/wp-json/wp/v2/pages/${HOME_PAGE_ID}?acf_format=standard`,
     `${base}/wp-json/wp/v2/pages?slug=front-page&acf_format=standard`,
     `${base}/wp-json/wp/v2/pages?slug=homepage&acf_format=standard`,
     `${base}/wp-json/wp/v2/pages?slug=aeromatic&acf_format=standard`,
@@ -45,6 +52,33 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function text(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function htmlToPlain(value: unknown): string {
+  const raw = text(value);
+  if (raw === "") {
+    return "";
+  }
+
+  return raw
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&#x27;/gi, "'")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
 }
 
 function numberValue(value: unknown): number {
@@ -134,7 +168,7 @@ function hero(value: unknown): HeroContent {
         {
           headingStrong: text(item.headingStrong),
           headingLight: rows(item.headingLight).map((line) => text(line)).filter((line) => line !== ""),
-          body: text(item.body),
+          body: htmlToPlain(item.body),
           cta: cta(item.cta),
           background: image(item.background),
         },
@@ -151,7 +185,7 @@ function why(value: unknown): WhyContent {
   return {
     eyebrow: text(value.eyebrow),
     heading: text(value.heading),
-    body: text(value.body),
+    body: htmlToPlain(value.body),
     images: images(value.images),
     items: rows(value.items).flatMap((item) => {
       if (!isRecord(item)) {
@@ -162,7 +196,7 @@ function why(value: unknown): WhyContent {
         {
           number: text(item.number),
           title: text(item.title),
-          body: text(item.body),
+          body: htmlToPlain(item.body),
         },
       ];
     }),
@@ -177,7 +211,7 @@ function products(value: unknown): ProductsContent {
   return {
     eyebrow: text(value.eyebrow),
     heading: text(value.heading),
-    body: text(value.body),
+    body: htmlToPlain(value.body),
     cta: cta(value.cta),
     cards: rows(value.cards).flatMap((item) => {
       if (!isRecord(item)) {
@@ -187,7 +221,7 @@ function products(value: unknown): ProductsContent {
       return [
         {
           title: text(item.title),
-          summary: text(item.summary),
+          summary: htmlToPlain(item.summary),
           href: text(item.href),
           action: text(item.action),
           image: image(item.image),
@@ -205,7 +239,7 @@ function industries(value: unknown): IndustriesContent {
   return {
     eyebrow: text(value.eyebrow),
     heading: text(value.heading),
-    body: text(value.body),
+    body: htmlToPlain(value.body),
     cta: cta(value.cta),
     cards: rows(value.cards).flatMap((item) => {
       if (!isRecord(item)) {
@@ -238,7 +272,7 @@ function processSection(value: unknown): ProcessContent {
   return {
     eyebrow: text(value.eyebrow),
     heading: text(value.heading),
-    body: text(value.body),
+    body: htmlToPlain(value.body),
     banner: text(value.banner),
     cta: cta(value.cta),
     steps: rows(value.steps).flatMap((item) => {
@@ -249,7 +283,7 @@ function processSection(value: unknown): ProcessContent {
       return [
         {
           title: text(item.title),
-          body: text(item.body),
+          body: htmlToPlain(item.body),
           icon: image(item.icon),
         },
       ];
@@ -274,7 +308,7 @@ function clientele(value: unknown): ClienteleContent {
   return {
     eyebrow: text(value.eyebrow),
     heading: text(value.heading),
-    body: text(value.body),
+    body: htmlToPlain(value.body),
     rating: text(value.rating),
     ratingLabel: text(value.ratingLabel),
     avatars: images(value.avatars),
@@ -286,8 +320,8 @@ function clientele(value: unknown): ClienteleContent {
 
       return [
         {
-          lead: text(item.lead),
-          rest: text(item.rest),
+          lead: htmlToPlain(item.lead),
+          rest: htmlToPlain(item.rest),
           name: text(item.name),
           location: text(item.location),
           photo: image(item.photo),
@@ -305,7 +339,7 @@ function insights(value: unknown): InsightsContent {
   return {
     eyebrow: text(value.eyebrow),
     heading: text(value.heading),
-    body: text(value.body),
+    body: htmlToPlain(value.body),
     cards: rows(value.cards).flatMap((item) => {
       if (!isRecord(item)) {
         return [];
@@ -339,7 +373,7 @@ function conversation(value: unknown): ConversationContent {
   return {
     eyebrow: text(value.eyebrow),
     heading: text(value.heading),
-    body: text(value.body),
+    body: htmlToPlain(value.body),
     cta: cta(value.cta),
     blower: image(value.blower),
     pump: image(value.pump),
@@ -360,7 +394,7 @@ function footer(value: unknown): FooterContent {
   }
 
   return {
-    blurb: text(value.blurb),
+    blurb: htmlToPlain(value.blurb),
     copyright: text(value.copyright),
     badgeIso: image(value.badgeIso),
     badgeCe: image(value.badgeCe),
@@ -489,7 +523,7 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
           {
             headingStrong: text(item.heading_strong) || text(item.headingStrong),
             headingLight: acfLines(item.heading_light ?? item.headingLight),
-            body: text(item.body),
+            body: htmlToPlain(item.body),
             cta: acfLink(item.cta),
             background: acfImage(item.background),
           },
@@ -499,7 +533,7 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
     why: {
       eyebrow: text(field(record, "why_eyebrow")),
       heading: text(field(record, "why_heading")),
-      body: text(field(record, "why_body")),
+      body: htmlToPlain(field(record, "why_body")),
       images: acfImages(field(record, "why_images")),
       items: rows(field(record, "why_items")).flatMap((item) => {
         if (!isRecord(item)) {
@@ -510,7 +544,7 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
           {
             number: text(item.number),
             title: text(item.title),
-            body: text(item.body),
+            body: htmlToPlain(item.body),
           },
         ];
       }),
@@ -518,7 +552,7 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
     products: {
       eyebrow: text(field(record, "products_eyebrow")),
       heading: text(field(record, "products_heading")),
-      body: text(field(record, "products_body")),
+      body: htmlToPlain(field(record, "products_body")),
       cta: acfLink(field(record, "products_cta")),
       cards: rows(field(record, "product_cards")).flatMap((item) => {
         if (!isRecord(item)) {
@@ -529,7 +563,7 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
         return [
           {
             title: text(item.title),
-            summary: text(item.summary),
+            summary: htmlToPlain(item.summary),
             href: link.href || text(item.href),
             action: link.label || text(item.action),
             image: acfImage(item.image),
@@ -540,7 +574,7 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
     industries: {
       eyebrow: text(field(record, "industries_eyebrow")),
       heading: text(field(record, "industries_heading")),
-      body: text(field(record, "industries_body")),
+      body: htmlToPlain(field(record, "industries_body")),
       cta: acfLink(field(record, "industries_cta")),
       cards: rows(field(record, "industry_cards")).flatMap((item) => {
         if (!isRecord(item)) {
@@ -560,7 +594,7 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
     process: {
       eyebrow: text(field(record, "process_eyebrow")),
       heading: text(field(record, "process_heading")),
-      body: text(field(record, "process_body")),
+      body: htmlToPlain(field(record, "process_body")),
       banner: text(field(record, "process_banner")),
       cta: acfLink(field(record, "process_cta")),
       steps: rows(field(record, "process_steps")).flatMap((item) => {
@@ -571,7 +605,7 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
         return [
           {
             title: text(item.title),
-            body: text(item.body),
+            body: htmlToPlain(item.body),
             icon: acfImage(item.icon),
           },
         ];
@@ -580,7 +614,7 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
     clientele: {
       eyebrow: text(field(record, "clientele_eyebrow")),
       heading: text(field(record, "clientele_heading")),
-      body: text(field(record, "clientele_body")),
+      body: htmlToPlain(field(record, "clientele_body")),
       rating: text(field(record, "clientele_rating")),
       ratingLabel: text(field(record, "clientele_rating_label")),
       avatars: acfImages(field(record, "clientele_avatars")),
@@ -592,8 +626,8 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
 
         return [
           {
-            lead: text(item.lead),
-            rest: text(item.rest),
+            lead: htmlToPlain(item.lead),
+            rest: htmlToPlain(item.rest),
             name: text(item.name),
             location: text(item.location),
             photo: acfImage(item.photo),
@@ -604,7 +638,7 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
     insights: {
       eyebrow: text(field(record, "insights_eyebrow")),
       heading: text(field(record, "insights_heading")),
-      body: text(field(record, "insights_body")),
+      body: htmlToPlain(field(record, "insights_body")),
       cards: rows(field(record, "insight_cards")).flatMap((item) => {
         if (!isRecord(item)) {
           return [];
@@ -625,13 +659,13 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
     conversation: {
       eyebrow: text(field(record, "conversation_eyebrow")),
       heading: text(field(record, "conversation_heading")),
-      body: text(field(record, "conversation_body")),
+      body: htmlToPlain(field(record, "conversation_body")),
       cta: acfLink(field(record, "conversation_cta")),
       blower: acfImage(field(record, "conversation_blower")),
       pump: acfImage(field(record, "conversation_pump")),
     },
     footer: {
-      blurb: text(field(record, "footer_blurb")),
+      blurb: htmlToPlain(field(record, "footer_blurb")),
       copyright: text(field(record, "footer_copyright")),
       badgeIso: acfImage(field(record, "footer_badge_iso")),
       badgeCe: acfImage(field(record, "footer_badge_ce")),
@@ -678,26 +712,59 @@ function mapRawAcf(record: Record<string, unknown>): HomeContent {
   };
 }
 
+function hasFlatHomepageFields(record: Record<string, unknown>): boolean {
+  return (
+    "hero_slides" in record ||
+    "why_heading" in record ||
+    "product_cards" in record ||
+    "site_name" in record ||
+    "nav_items" in record
+  );
+}
+
+function mapNestedHome(record: Record<string, unknown>): HomeContent {
+  return {
+    name: text(record.name),
+    legalName: text(record.legalName),
+    tagline: text(record.tagline),
+    nav: navItems(record.nav),
+    header: header(record.header),
+    hero: hero(record.hero),
+    why: why(record.why),
+    products: products(record.products),
+    industries: industries(record.industries),
+    process: processSection(record.process),
+    clientele: clientele(record.clientele),
+    insights: insights(record.insights),
+    conversation: conversation(record.conversation),
+    footer: footer(record.footer),
+  };
+}
+
+function homeHasVisibleContent(content: HomeContent): boolean {
+  return (
+    content.name !== "" ||
+    content.nav.length > 0 ||
+    content.hero.slides.length > 0 ||
+    content.why.heading !== "" ||
+    content.why.items.length > 0 ||
+    content.products.heading !== "" ||
+    content.products.cards.length > 0
+  );
+}
+
 function mapHome(acf: unknown): HomeContent {
   const record = isRecord(acf) ? acf : {};
 
+  if (hasFlatHomepageFields(record)) {
+    const fromFlat = mapRawAcf(record);
+    if (homeHasVisibleContent(fromFlat)) {
+      return fromFlat;
+    }
+  }
+
   if (isRecord(record.hero) || isRecord(record.header) || Array.isArray(record.nav)) {
-    return {
-      name: text(record.name),
-      legalName: text(record.legalName),
-      tagline: text(record.tagline),
-      nav: navItems(record.nav),
-      header: header(record.header),
-      hero: hero(record.hero),
-      why: why(record.why),
-      products: products(record.products),
-      industries: industries(record.industries),
-      process: processSection(record.process),
-      clientele: clientele(record.clientele),
-      insights: insights(record.insights),
-      conversation: conversation(record.conversation),
-      footer: footer(record.footer),
-    };
+    return mapNestedHome(record);
   }
 
   return mapRawAcf(record);
@@ -757,18 +824,53 @@ function emptyHome(): HomeContent {
 }
 
 async function fetchJson(url: string): Promise<unknown | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, FETCH_TIMEOUT_MS);
+
   try {
     const response = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "AeromaticNext/1.0",
+      },
+      signal: controller.signal,
       next: { revalidate: REVALIDATE_SECONDS },
     });
+
     if (!response.ok) {
+      console.error(`[wordpress] ${response.status} ${url}`);
+      return null;
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("json")) {
+      console.error(`[wordpress] non-json response ${url} ${contentType}`);
       return null;
     }
 
     return await response.json();
-  } catch {
+  } catch (error) {
+    console.error(`[wordpress] fetch failed ${url}`, error);
     return null;
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+function asPages(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (isRecord(payload) && (payload.id !== undefined || acfHasValues(payload.acf))) {
+    return [payload];
+  }
+
+  return [];
 }
 
 function pageAcf(page: unknown): unknown {
@@ -797,16 +899,30 @@ function pickHomePage(pages: unknown[]): unknown | null {
 }
 
 async function fetchHomePage(): Promise<unknown | null> {
+  let fallbackPage: unknown | null = null;
+
   for (const url of corePageUrls()) {
     const payload = await fetchJson(url);
-    const pages = Array.isArray(payload) ? payload : [];
+    const pages = asPages(payload);
     if (pages.length === 0) {
       continue;
     }
 
-    return pickHomePage(pages);
+    const page = pickHomePage(pages);
+    if (page !== null && acfHasValues(pageAcf(page))) {
+      return page;
+    }
+
+    if (fallbackPage === null && page !== null) {
+      fallbackPage = page;
+    }
   }
 
+  if (fallbackPage !== null) {
+    return fallbackPage;
+  }
+
+  console.error("[wordpress] no homepage payload from WordPress REST");
   return null;
 }
 
