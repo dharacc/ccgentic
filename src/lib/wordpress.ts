@@ -101,27 +101,11 @@ function cta(value: unknown): CtaLink {
 }
 
 function image(value: unknown): ImageAsset | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const src = text(value.src);
-  if (src === "") {
-    return null;
-  }
-
-  return {
-    src,
-    alt: text(value.alt),
-    width: numberValue(value.width),
-    height: numberValue(value.height),
-  };
+  return acfImage(value);
 }
 
 function images(value: unknown): ImageAsset[] {
-  return rows(value)
-    .map((item) => image(item))
-    .filter((item): item is ImageAsset => item !== null);
+  return acfImages(value);
 }
 
 function navItems(value: unknown): NavItem[] {
@@ -439,26 +423,115 @@ function footer(value: unknown): FooterContent {
   };
 }
 
+const MEDIA_PLACEHOLDER = "__wp_media:";
+const DESIGN_MEDIA = "/media/aeromatic";
+
+function attachmentId(value: unknown): number {
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) {
+    return Number(value.trim());
+  }
+
+  return 0;
+}
+
+function sizeUrl(sizes: unknown, key: string): string {
+  if (!isRecord(sizes)) {
+    return "";
+  }
+
+  const size = sizes[key];
+  if (typeof size === "string") {
+    return size;
+  }
+
+  if (!isRecord(size)) {
+    return "";
+  }
+
+  return text(size.url) || text(size.source_url);
+}
+
+function resolvePublicSrc(src: string): string {
+  const trimmed = src.trim();
+  if (trimmed === "" || trimmed.startsWith(MEDIA_PLACEHOLDER) || trimmed.startsWith("/media/")) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  const base = wordpressUrl();
+  if (trimmed.startsWith("/")) {
+    return `${base}${trimmed}`;
+  }
+
+  return `${base}/${trimmed}`;
+}
+
+function placeholderImage(id: number, alt: string, width: number, height: number): ImageAsset {
+  return {
+    src: `${MEDIA_PLACEHOLDER}${id}`,
+    alt,
+    width,
+    height,
+  };
+}
+
 function acfImage(value: unknown): ImageAsset | null {
-  if (typeof value === "string" && value !== "") {
-    return { src: value, alt: "", width: 0, height: 0 };
+  const numericId = attachmentId(value);
+  if (numericId > 0) {
+    return placeholderImage(numericId, "", 0, 0);
+  }
+
+  if (typeof value === "string") {
+    const src = resolvePublicSrc(value);
+    if (src === "") {
+      return null;
+    }
+
+    return { src, alt: "", width: 0, height: 0 };
   }
 
   if (!isRecord(value)) {
     return null;
   }
 
-  const src = text(value.url) || text(value.src);
-  if (src === "") {
-    return null;
+  const src =
+    text(value.url) ||
+    text(value.src) ||
+    text(value.source_url) ||
+    sizeUrl(value.sizes, "large") ||
+    sizeUrl(value.sizes, "medium_large") ||
+    sizeUrl(value.sizes, "full") ||
+    sizeUrl(value.sizes, "medium");
+  const alt = text(value.alt) || text(value.alt_text);
+  const width = numberValue(value.width);
+  const height = numberValue(value.height);
+  const id = attachmentId(value.ID) || attachmentId(value.id);
+
+  if (src !== "") {
+    return {
+      src: resolvePublicSrc(src),
+      alt,
+      width,
+      height,
+    };
   }
 
-  return {
-    src,
-    alt: text(value.alt),
-    width: numberValue(value.width),
-    height: numberValue(value.height),
-  };
+  if (id > 0) {
+    return placeholderImage(id, alt, width, height);
+  }
+
+  return null;
 }
 
 function acfImages(value: unknown): ImageAsset[] {
@@ -787,6 +860,402 @@ function acfHasValues(acf: unknown): acf is Record<string, unknown> {
   });
 }
 
+function localAsset(file: string, alt = ""): ImageAsset {
+  return { src: `${DESIGN_MEDIA}/${file}`, alt, width: 0, height: 0 };
+}
+
+function withImage(current: ImageAsset | null, fallback: ImageAsset): ImageAsset {
+  if (current && current.src !== "" && !current.src.startsWith(MEDIA_PLACEHOLDER)) {
+    return current;
+  }
+
+  return fallback;
+}
+
+function industryFallback(title: string, index: number): ImageAsset {
+  const key = title.toLowerCase();
+  if (key.includes("paper")) {
+    return localAsset("industry-paper.png", title);
+  }
+  if (key.includes("chemical")) {
+    return localAsset("industry-chemical.png", title);
+  }
+  if (key.includes("petroleum") || key.includes("refiner") || key.includes("oil")) {
+    return localAsset("industry-oil.png", title);
+  }
+  if (key.includes("power")) {
+    return localAsset("industry-power.png", title);
+  }
+  if (key.includes("pharma")) {
+    return localAsset("industry-pharma.png", title);
+  }
+  if (key.includes("food") || key.includes("dairy") || key.includes("beverage")) {
+    return localAsset("industry-food.png", title);
+  }
+
+  const byIndex = [
+    "industry-paper.png",
+    "industry-chemical.png",
+    "industry-oil.png",
+    "industry-power.png",
+    "industry-pharma.png",
+    "industry-food.png",
+  ];
+
+  return localAsset(byIndex[index] ?? byIndex[0], title);
+}
+
+function productFallback(title: string, index: number): ImageAsset {
+  const key = title.toLowerCase();
+  if (key.includes("vacuum") || key.includes("air handling") || key.includes("blower")) {
+    return localAsset("product-vacuum.png", title);
+  }
+  if (key.includes("heat") || key.includes("dry") || key.includes("thermal")) {
+    return localAsset("product-heating.png", title);
+  }
+
+  return localAsset(index === 1 ? "product-heating.png" : "product-vacuum.png", title);
+}
+
+function testimonialFallback(name: string, index: number): ImageAsset {
+  const key = name.toLowerCase();
+  if (key.includes("mahmoud")) {
+    return localAsset("review-mahmoud.png", name);
+  }
+  if (key.includes("rick")) {
+    return localAsset("review-rick.png", name);
+  }
+  if (key.includes("enyo")) {
+    return localAsset("review-enyo.png", name);
+  }
+  if (key.includes("catherine")) {
+    return localAsset("review-catherine.png", name);
+  }
+  if (key.includes("nert")) {
+    return localAsset("review-nert.png", name);
+  }
+  if (key.includes("clay")) {
+    return localAsset("review-clay.png", name);
+  }
+
+  const byIndex = [
+    "review-mahmoud.png",
+    "review-rick.png",
+    "review-enyo.png",
+    "review-catherine.png",
+    "review-nert.png",
+    "review-clay.png",
+  ];
+
+  return localAsset(byIndex[index] ?? byIndex[0], name);
+}
+
+function socialFallback(label: string): string {
+  const key = label.toLowerCase();
+  if (key.includes("instagram")) {
+    return `${DESIGN_MEDIA}/social-instagram.svg`;
+  }
+  if (key.includes("facebook")) {
+    return `${DESIGN_MEDIA}/social-facebook.svg`;
+  }
+  if (key.includes("linkedin")) {
+    return `${DESIGN_MEDIA}/social-linkedin.svg`;
+  }
+  if (key === "x" || key.includes("twitter")) {
+    return `${DESIGN_MEDIA}/social-x.svg`;
+  }
+
+  return "";
+}
+
+function mapHomeImages(
+  content: HomeContent,
+  transform: (image: ImageAsset) => ImageAsset | null,
+): HomeContent {
+  const one = (image: ImageAsset | null): ImageAsset | null => {
+    if (image === null) {
+      return null;
+    }
+
+    return transform(image);
+  };
+
+  const many = (items: ImageAsset[]): ImageAsset[] =>
+    items.map((item) => transform(item)).filter((item): item is ImageAsset => item !== null);
+
+  return {
+    ...content,
+    header: { ...content.header, logo: one(content.header.logo) },
+    hero: {
+      ...content.hero,
+      badgeRing: one(content.hero.badgeRing),
+      badgeCenter: one(content.hero.badgeCenter),
+      slides: content.hero.slides.map((slide) => ({
+        ...slide,
+        background: one(slide.background),
+      })),
+    },
+    why: { ...content.why, images: many(content.why.images) },
+    products: {
+      ...content.products,
+      cards: content.products.cards.map((card) => ({
+        ...card,
+        image: one(card.image),
+      })),
+    },
+    industries: {
+      ...content.industries,
+      cards: content.industries.cards.map((card) => ({
+        ...card,
+        image: one(card.image),
+      })),
+    },
+    process: {
+      ...content.process,
+      steps: content.process.steps.map((step) => ({
+        ...step,
+        icon: one(step.icon),
+      })),
+    },
+    clientele: {
+      ...content.clientele,
+      avatars: many(content.clientele.avatars),
+      logos: many(content.clientele.logos),
+      testimonials: content.clientele.testimonials.map((item) => ({
+        ...item,
+        photo: one(item.photo),
+      })),
+    },
+    insights: {
+      ...content.insights,
+      cards: content.insights.cards.map((card) => ({
+        ...card,
+        image: one(card.image),
+      })),
+    },
+    conversation: {
+      ...content.conversation,
+      blower: one(content.conversation.blower),
+      pump: one(content.conversation.pump),
+    },
+    footer: {
+      ...content.footer,
+      badgeIso: one(content.footer.badgeIso),
+      badgeCe: one(content.footer.badgeCe),
+    },
+  };
+}
+
+function collectPlaceholderIds(content: HomeContent): number[] {
+  const ids = new Set<number>();
+
+  mapHomeImages(content, (image) => {
+    if (image.src.startsWith(MEDIA_PLACEHOLDER)) {
+      const id = Number(image.src.slice(MEDIA_PLACEHOLDER.length));
+      if (Number.isInteger(id) && id > 0) {
+        ids.add(id);
+      }
+    }
+
+    return image;
+  });
+
+  for (const item of content.footer.social) {
+    if (item.icon.startsWith(MEDIA_PLACEHOLDER)) {
+      const id = Number(item.icon.slice(MEDIA_PLACEHOLDER.length));
+      if (Number.isInteger(id) && id > 0) {
+        ids.add(id);
+      }
+    }
+  }
+
+  return [...ids];
+}
+
+function mediaSourceUrl(payload: Record<string, unknown>): string {
+  const direct = text(payload.source_url);
+  if (direct !== "") {
+    return resolvePublicSrc(direct);
+  }
+
+  if (isRecord(payload.guid)) {
+    const guid = text(payload.guid.rendered);
+    if (guid !== "") {
+      return resolvePublicSrc(guid);
+    }
+  }
+
+  if (isRecord(payload.media_details) && isRecord(payload.media_details.sizes)) {
+    const sizes = payload.media_details.sizes;
+    const large = isRecord(sizes.large) ? text(sizes.large.source_url) : "";
+    const full = isRecord(sizes.full) ? text(sizes.full.source_url) : "";
+    if (large !== "") {
+      return resolvePublicSrc(large);
+    }
+    if (full !== "") {
+      return resolvePublicSrc(full);
+    }
+  }
+
+  return "";
+}
+
+async function fetchMediaUrl(id: number): Promise<string> {
+  const base = wordpressUrl();
+  const urls = [`${base}/wp-json/wp/v2/media/${id}`, `${base}/index.php/wp-json/wp/v2/media/${id}`];
+
+  for (const url of urls) {
+    const payload = await fetchJson(url);
+    if (isRecord(payload)) {
+      const src = mediaSourceUrl(payload);
+      if (src !== "") {
+        return src;
+      }
+    }
+  }
+
+  return "";
+}
+
+async function resolveAttachmentImages(content: HomeContent): Promise<HomeContent> {
+  const ids = collectPlaceholderIds(content);
+  if (ids.length === 0) {
+    return content;
+  }
+
+  const resolved = new Map<number, string>();
+  await Promise.all(
+    ids.map(async (id) => {
+      const url = await fetchMediaUrl(id);
+      if (url !== "") {
+        resolved.set(id, url);
+      }
+    }),
+  );
+
+  const withImages = mapHomeImages(content, (image) => {
+    if (!image.src.startsWith(MEDIA_PLACEHOLDER)) {
+      return image;
+    }
+
+    const id = Number(image.src.slice(MEDIA_PLACEHOLDER.length));
+    const url = resolved.get(id);
+    if (!url) {
+      return null;
+    }
+
+    return { ...image, src: url };
+  });
+
+  return {
+    ...withImages,
+    footer: {
+      ...withImages.footer,
+      social: content.footer.social.map((item) => {
+        if (!item.icon.startsWith(MEDIA_PLACEHOLDER)) {
+          return item;
+        }
+
+        const id = Number(item.icon.slice(MEDIA_PLACEHOLDER.length));
+        const url = resolved.get(id);
+        return { ...item, icon: url ?? "" };
+      }),
+    },
+  };
+}
+
+function applyDesignedImageFallbacks(content: HomeContent): HomeContent {
+  const whyDefaults = [
+    localAsset("why-photo-1.png", content.why.heading),
+    localAsset("why-photo-2.png", content.why.heading),
+    localAsset("why-photo-3.png", content.why.heading),
+  ];
+  const whyImages = whyDefaults.map((fallback, index) => withImage(content.why.images[index] ?? null, fallback));
+
+  const avatarDefaults = [
+    localAsset("avatar-1.png"),
+    localAsset("avatar-2.png"),
+    localAsset("avatar-3.png"),
+    localAsset("avatar-4.png"),
+  ];
+  const avatars =
+    content.clientele.avatars.length > 0
+      ? content.clientele.avatars
+      : avatarDefaults;
+  const logos = content.clientele.logos.length > 0 ? content.clientele.logos : [localAsset("logoipsum.png")];
+
+  return {
+    ...content,
+    header: {
+      ...content.header,
+      logo: withImage(content.header.logo, localAsset("logo.svg", content.name)),
+    },
+    hero: {
+      badgeRing: withImage(content.hero.badgeRing, localAsset("hero-badge-ring.png")),
+      badgeCenter: withImage(content.hero.badgeCenter, localAsset("hero-badge-center.png", content.name)),
+      slides: content.hero.slides.map((slide) => ({
+        ...slide,
+        background: withImage(slide.background, localAsset("hero-factory.png", slide.headingStrong)),
+      })),
+    },
+    why: {
+      ...content.why,
+      images: whyImages,
+    },
+    products: {
+      ...content.products,
+      cards: content.products.cards.map((card, index) => ({
+        ...card,
+        image: withImage(card.image, productFallback(card.title, index)),
+      })),
+    },
+    industries: {
+      ...content.industries,
+      cards: content.industries.cards.map((card, index) => ({
+        ...card,
+        image: withImage(card.image, industryFallback(card.title, index)),
+      })),
+    },
+    process: {
+      ...content.process,
+      steps: content.process.steps.map((step, index) => ({
+        ...step,
+        icon: withImage(step.icon, localAsset(`process-icon-${(index % 6) + 1}.svg`, step.title)),
+      })),
+    },
+    clientele: {
+      ...content.clientele,
+      avatars,
+      logos,
+      testimonials: content.clientele.testimonials.map((item, index) => ({
+        ...item,
+        photo: withImage(item.photo, testimonialFallback(item.name, index)),
+      })),
+    },
+    insights: {
+      ...content.insights,
+      cards: content.insights.cards.map((card, index) => ({
+        ...card,
+        image: withImage(card.image, localAsset(`insight-${(index % 4) + 1}.png`, card.title)),
+      })),
+    },
+    conversation: {
+      ...content.conversation,
+      blower: withImage(content.conversation.blower, localAsset("cta-blower.png")),
+      pump: withImage(content.conversation.pump, localAsset("cta-pump.png")),
+    },
+    footer: {
+      ...content.footer,
+      badgeIso: withImage(content.footer.badgeIso, localAsset("footer-iso.svg", "ISO")),
+      badgeCe: withImage(content.footer.badgeCe, localAsset("footer-ce.png", "CE")),
+      social: content.footer.social.map((item) => ({
+        ...item,
+        icon: item.icon !== "" && !item.icon.startsWith(MEDIA_PLACEHOLDER) ? item.icon : socialFallback(item.label),
+      })),
+    },
+  };
+}
+
 function emptyHome(): HomeContent {
   return {
     name: "",
@@ -933,5 +1402,7 @@ export const getHomeContent = cache(async (): Promise<HomeContent> => {
     return emptyHome();
   }
 
-  return mapHome(acf);
+  const mapped = mapHome(acf);
+  const withMedia = await resolveAttachmentImages(mapped);
+  return applyDesignedImageFallbacks(withMedia);
 });
