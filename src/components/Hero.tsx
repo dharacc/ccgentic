@@ -1,55 +1,106 @@
-import ArrowButton from "@/components/ArrowButton";
-import Header from "@/components/Header";
-import { PartnerMarkIcon } from "@/components/icons";
-import { HERO } from "@/lib/project";
+"use client";
 
-export default function Hero() {
+import Image from "next/image";
+import Carousel from "@/components/Carousel";
+import PillButton from "@/components/PillButton";
+import type { HeroContent } from "@/lib/content";
+
+type HeroProps = {
+  content: HeroContent;
+};
+
+const HERO_AUTOPLAY_SPEED = 5500;
+const HERO_SPEED = 600;
+
+export default function Hero({ content }: HeroProps) {
+  const slides = content.slides;
+  if (slides.length === 0) {
+    return null;
+  }
+
+  const canCycle = slides.length > 1;
+
   return (
-    <section className="relative flex h-dvh flex-col overflow-hidden bg-[#EFEFEF]">
-      <div className="hero-mesh pointer-events-none absolute inset-0 z-10" />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-24 right-[-10%] z-10 h-[70%] w-[70%] rounded-full bg-white/50 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-[-20%] left-[-15%] z-10 h-[55%] w-[55%] rotate-12 rounded-[40%] bg-[#f3e6d8]/70 blur-3xl"
-      />
-      <Header />
-      <div className="relative z-20 flex flex-1 flex-col justify-end">
-        <div className="mx-auto w-full max-w-[1440px] px-5 pb-14 sm:px-8 sm:pb-16 lg:px-12 lg:pb-20">
-          <p className="mb-5 block text-[13px] tracking-wide text-gray-900 sm:mb-8 sm:text-[14px]">
-            {HERO.eyebrow}
-          </p>
-          <h1 className="text-[clamp(1.75rem,7vw,4.2rem)] font-medium leading-[1.08] tracking-[-0.03em] text-gray-900 sm:text-[clamp(2.5rem,5vw,4.2rem)]">
-            {HERO.headingLines.map((line, index) => (
-              <span key={`${index}-${line}`}>
-                {index > 0 ? (
-                  <>
-                    <br className="hidden sm:block" />
-                    <span className="sm:hidden"> </span>
-                  </>
+    <section className="px-3 pb-6 sm:px-4 lg:px-6">
+      <Carousel
+        className="hero-carousel overflow-hidden rounded-[25px]"
+        ariaLabel="Hero banners"
+        slidesToShow={1}
+        slidesToScroll={1}
+        arrows={false}
+        dots={canCycle}
+        infinite={canCycle}
+        autoplay={canCycle}
+        autoplaySpeed={HERO_AUTOPLAY_SPEED}
+        speed={HERO_SPEED}
+        pauseOnHover
+        pauseOnFocus
+        fade={false}
+      >
+        {slides.map((slide, index) => (
+          <div key={`${slide.headingStrong}-${index}`}>
+            <div className="relative overflow-hidden bg-black">
+              <div className="relative min-h-[520px] sm:min-h-[560px] lg:min-h-[850px]">
+                {slide.background?.src ? (
+                  <Image
+                    src={slide.background.src}
+                    alt={slide.background.alt}
+                    fill
+                    preload
+                    sizes="100vw"
+                    className="object-cover object-[center_center] sm:object-center"
+                  />
                 ) : null}
-                {line}
-              </span>
-            ))}
-          </h1>
-          <div className="mt-8 flex flex-col items-start gap-4 sm:mt-12 sm:flex-row sm:items-center sm:gap-5">
-            <ArrowButton href={HERO.primaryCta.href}>
-              {HERO.primaryCta.label}
-            </ArrowButton>
-            <div className="flex items-center gap-2 rounded-[4px] bg-white px-2.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
-              <PartnerMarkIcon className="h-5 w-5 text-[#E8704E] sm:h-6 sm:w-6" />
-              <span className="text-[13px] font-medium text-gray-900 sm:text-[14px]">
-                {HERO.badge.label}
-              </span>
-              <span className="rounded bg-gray-900 px-1.5 py-0.5 text-[10px] text-white sm:px-2 sm:text-[11px]">
-                {HERO.badge.tag}
-              </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/10 sm:from-black/55 sm:via-black/25 sm:to-transparent" />
+                <div className="site-shell relative z-10 flex min-h-[520px] flex-col justify-center py-14 sm:min-h-[560px] sm:py-16 lg:min-h-[850px] lg:py-24">
+                  <h1 className="font-display max-w-[750px] text-[clamp(2rem,4.2vw,54.3px)] leading-[1.1] text-white">
+                    <span className="font-bold">{slide.headingStrong}</span>
+                    {slide.headingLight.map((line) => (
+                      <span key={line} className="block font-light">
+                        {line}
+                      </span>
+                    ))}
+                  </h1>
+                  {slide.body ? (
+                    <p className="mt-6 max-w-[599px] text-[16px] leading-[24px] text-[#e5e7eb] sm:mt-8 sm:text-[18px] sm:leading-[25px]">
+                      {slide.body}
+                    </p>
+                  ) : null}
+                  {slide.cta.href && slide.cta.label ? (
+                    <div className="mt-8">
+                      <PillButton href={slide.cta.href} variant="ghost-white">
+                        {slide.cta.label}
+                      </PillButton>
+                    </div>
+                  ) : null}
+                </div>
+                {content.badgeRing?.src ? (
+                  <div className="absolute top-[24px] right-[16px] hidden size-[160px] sm:top-[40px] sm:right-[28px] sm:block md:size-[200px] lg:top-[67px] lg:right-[48px] lg:size-[247px]">
+                    <div className="hero-badge-spin absolute inset-0">
+                      <Image
+                        src={content.badgeRing.src}
+                        alt=""
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                    {content.badgeCenter?.src ? (
+                      <div className="absolute top-1/2 left-1/2 size-[56px] -translate-x-1/2 -translate-y-1/2 md:size-[70px] lg:size-[86px]">
+                        <Image
+                          src={content.badgeCenter.src}
+                          alt={content.badgeCenter.alt}
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        ))}
+      </Carousel>
     </section>
   );
 }
